@@ -1,4 +1,4 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { UserDocument } from './user.schema';
 
 import * as mongoose from 'mongoose';
@@ -43,3 +43,9 @@ export class Demand {
   })
   demandItems: Array<any>;
 }
+
+export type DemandDocument = Demand & Document;
+
+const DemandSchema = SchemaFactory.createForClass(Demand);
+
+export { DemandSchema };
