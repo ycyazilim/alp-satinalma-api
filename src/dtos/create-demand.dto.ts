@@ -1,4 +1,4 @@
-import { IsArray, IsString } from 'class-validator';
+import { IsArray, IsOptional, IsString } from 'class-validator';
 
 export class CreateDemandDto {
   @IsString()
@@ -11,6 +11,7 @@ export class CreateDemandDto {
   projectCode: string;
 
   @IsString()
+  @IsOptional()
   demandRequester: string;
 
   @IsString()

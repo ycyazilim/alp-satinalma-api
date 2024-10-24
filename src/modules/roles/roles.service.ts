@@ -13,6 +13,7 @@ export class RolesService {
   async createRole(createRoleDto: CreateRoleDto) {
     const role = new this.roleModel({
       role: createRoleDto.role,
+      level: createRoleDto.level,
     });
     return await role.save();
   }

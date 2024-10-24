@@ -9,6 +9,11 @@ export class Role {
     type: String,
   })
   role: string;
+
+  @Prop({
+    type: Number,
+  })
+  level: number;
 }
 
 export type RoleDocument = Role & Document;

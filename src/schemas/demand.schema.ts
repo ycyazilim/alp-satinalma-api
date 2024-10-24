@@ -42,6 +42,10 @@ export class Demand {
     required: true,
   })
   demandItems: Array<any>;
+
+  // Use Mixed to allow any arbitrary fields
+  @Prop({ type: mongoose.Schema.Types.Mixed, default: {} })
+  roles: Record<string, any>;
 }
 
 export type DemandDocument = Demand & Document;

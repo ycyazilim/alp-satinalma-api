@@ -4,9 +4,18 @@ import { DemandsController } from './demands.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Demand, DemandSchema } from 'src/schemas/demand.schema';
 import { User, UserSchema } from 'src/schemas/user.schema';
+import { Role, RoleSchema } from 'src/schemas/role.schema';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
+    JwtModule.registerAsync({
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get('JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
     MongooseModule.forFeature([
       {
         name: Demand.name,
@@ -15,6 +24,10 @@ import { User, UserSchema } from 'src/schemas/user.schema';
       {
         name: User.name,
         schema: UserSchema,
+      },
+      {
+        name: Role.name,
+        schema: RoleSchema,
       },
     ]),
   ],
