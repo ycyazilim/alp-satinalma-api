@@ -19,4 +19,8 @@ export class CreateDemandDto {
 
   @IsArray()
   demandItems: Array<any>;
+
+  @IsArray()
+  @IsOptional()
+  firms: Array<any>;
 }

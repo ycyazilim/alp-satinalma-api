@@ -50,4 +50,23 @@ export class DemandsController {
   ) {
     return this.demandsService.addRoleToDemand(demandId, roleId);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('add-firm')
+  addFirmToDemand(
+    @Body('demandId') demandId: string,
+    @Body('firms') firms: Array<any>,
+    @Body('notes') notes: string,
+  ) {
+    return this.demandsService.addFirmToDemand(demandId, firms, notes);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('delete-firm')
+  deleteFirmFromDemand(
+    @Body('demandId') demandId: string,
+    @Body('firmId') firmId: string,
+  ) {
+    return this.demandsService.deleteFirmFromDemand(demandId, firmId);
+  }
 }

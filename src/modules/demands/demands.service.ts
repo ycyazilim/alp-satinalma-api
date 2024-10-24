@@ -6,6 +6,8 @@ import { Demand, DemandDocument } from 'src/schemas/demand.schema';
 import { Role, RoleDocument } from 'src/schemas/role.schema';
 import { User, UserDocument } from 'src/schemas/user.schema';
 
+import { v4 as uuidv4 } from 'uuid';
+
 @Injectable()
 export class DemandsService {
   constructor(
@@ -221,5 +223,63 @@ export class DemandsService {
     console.log(addRoleToDemand);
 
     return addRoleToDemand;
+  }
+
+  async addFirmToDemand(demandId: string, firms: Array<any>, notes: string) {
+    const findDocument = await this.demandModel.findById(demandId).lean();
+
+    console.log('document', findDocument);
+
+    if (!findDocument) {
+      throw new Error('Document not found');
+    }
+
+    const addFirmToDemand = await this.demandModel.findByIdAndUpdate(
+      demandId,
+      {
+        $push: {
+          firms: {
+            $each: firms.map((firm) => ({
+              _id: uuidv4(), // Her firmaya unique bir ID atıyoruz
+              ...firm,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })),
+          },
+        },
+        notes: notes,
+      },
+      { new: true },
+    );
+
+    console.log(addFirmToDemand);
+
+    return addFirmToDemand;
+  }
+
+  async deleteFirmFromDemand(demandId: string, firmId: string) {
+    const findDocument = await this.demandModel.findById(demandId).lean();
+
+    console.log('document', findDocument);
+
+    if (!findDocument) {
+      throw new Error('Document not found');
+    }
+
+    const deleteFirmFromDemand = await this.demandModel.findByIdAndUpdate(
+      demandId,
+      {
+        $pull: {
+          firms: {
+            _id: firmId,
+          },
+        },
+      },
+      { new: true },
+    );
+
+    console.log(deleteFirmFromDemand);
+
+    return deleteFirmFromDemand;
   }
 }
