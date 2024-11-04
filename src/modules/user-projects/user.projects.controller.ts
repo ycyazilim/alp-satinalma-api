@@ -10,6 +10,7 @@ import {
 import { UserProjectsService } from './user.projects.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateUserProjectDto } from './dto/create-project.dto';
+import { UpdateUserProjectDto } from './dto/update-project.dto';
 
 @Controller('userProjects')
 export class UserProjectsController {
@@ -19,6 +20,12 @@ export class UserProjectsController {
   @Post()
   create(@Body() createProjectDto: CreateUserProjectDto) {
     return this.projectsService.create(createProjectDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('update')
+  update(@Body() createProjectDto: UpdateUserProjectDto) {
+    return this.projectsService.update(createProjectDto);
   }
 
   @UseGuards(JwtAuthGuard)

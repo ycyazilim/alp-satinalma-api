@@ -12,6 +12,7 @@ import { CompareService } from './compare.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/decorators/current-user';
 import { CreateCompareDto } from '../../dtos/create-compare.dto';
+import { EditCompareDto } from '../../dtos/edit-compare.dto';
 
 @Controller('compare')
 export class CompareController {
@@ -28,12 +29,28 @@ export class CompareController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('update')
+  updateCompare(
+    @Body() createCompareDto: EditCompareDto,
+    @CurrentUser() currentUser,
+  ) {
+    console.log('currentUser', currentUser);
+    return this.compareService.updateCompare(createCompareDto, currentUser._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Put('approve')
   approveCompare(
     @Body('demandId') demandId: string,
     @CurrentUser() currentUser,
   ) {
     return this.compareService.approveCompare(demandId, currentUser._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('denny')
+  dennyCompare(@Body('demandId') demandId: string, @CurrentUser() currentUser) {
+    return this.compareService.dennyCompare(demandId, currentUser._id);
   }
   @UseGuards(JwtAuthGuard)
   @Get()
