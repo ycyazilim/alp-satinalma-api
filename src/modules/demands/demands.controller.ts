@@ -1,8 +1,18 @@
-import { Body, Controller, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { DemandsService } from './demands.service';
 import { CreateDemandDto } from 'src/dtos/create-demand.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/decorators/current-user';
+import { UpdateDemandDto } from "../../dtos/update-demand.dto";
 
 @Controller('demands')
 export class DemandsController {
@@ -16,6 +26,16 @@ export class DemandsController {
   ) {
     console.log('currentUser', currentUser);
     return this.demandsService.createDemand(createDemandDto, currentUser._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('update')
+  updateDemand(
+    @Body() createDemandDto: UpdateDemandDto,
+    @CurrentUser() currentUser,
+  ) {
+    console.log('currentUser', createDemandDto);
+    return this.demandsService.updateDemand(createDemandDto, currentUser._id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -52,21 +72,42 @@ export class DemandsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put('add-firm')
-  addFirmToDemand(
-    @Body('demandId') demandId: string,
-    @Body('firms') firms: Array<any>,
-    @Body('notes') notes: string,
+  @Get()
+  findAll(@Query('page') page: string, @CurrentUser() currentUser) {
+    return this.demandsService.findAll(+page, currentUser._id);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Get('filter')
+  filter(
+    @Query('name') name: string,
+    @Query('page') page: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('showOnlyNew') showOnlyNew: boolean | undefined,
+    @Query('showWatingApprove') showWatingApprove: boolean | undefined,
+    @Query('showArhive') showArhive: boolean | undefined,
+    @CurrentUser() currentUser,
   ) {
-    return this.demandsService.addFirmToDemand(demandId, firms, notes);
+    return this.demandsService.filter(
+      name,
+      +page,
+      startDate,
+      endDate,
+      showOnlyNew,
+      showWatingApprove,
+      showArhive,
+      currentUser._id,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put('delete-firm')
-  deleteFirmFromDemand(
-    @Body('demandId') demandId: string,
-    @Body('firmId') firmId: string,
-  ) {
-    return this.demandsService.deleteFirmFromDemand(demandId, firmId);
+  @Delete()
+  delete(@Query('id') id: string) {
+    return this.demandsService.remove(id);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Post('read')
+  read(@Body('id') id: string, @CurrentUser() currentUser) {
+    return this.demandsService.read(id, currentUser._id);
   }
 }

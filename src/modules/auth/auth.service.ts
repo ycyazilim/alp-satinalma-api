@@ -64,4 +64,9 @@ export class AuthService {
 
     return { user: findUser, accessToken: token };
   }
+
+  getUser(userId: string) {
+    console.log(userId);
+    return this.userModel.findById(userId).lean();
+  }
 }

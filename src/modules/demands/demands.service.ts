@@ -1,12 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { CreateDemandDto } from 'src/dtos/create-demand.dto';
 import { Demand, DemandDocument } from 'src/schemas/demand.schema';
 import { Role, RoleDocument } from 'src/schemas/role.schema';
 import { User, UserDocument } from 'src/schemas/user.schema';
 
-import { v4 as uuidv4 } from 'uuid';
+import { Project, ProjectDocument } from '../../schemas/project.schema';
+import {
+  UserProject,
+  UserProjectDocument,
+} from '../../schemas/user.projects.schema';
+import { UpdateDemandDto } from "../../dtos/update-demand.dto";
 
 @Injectable()
 export class DemandsService {
@@ -14,6 +19,9 @@ export class DemandsService {
     @InjectModel(Demand.name) private demandModel: Model<DemandDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
+    @InjectModel(Project.name) private projectModel: Model<ProjectDocument>,
+    @InjectModel(UserProject.name)
+    private userProjectModel: Model<UserProjectDocument>,
   ) {}
 
   async createDemand(
@@ -28,24 +36,14 @@ export class DemandsService {
 
     const roles = await this.roleModel.find({});
 
-    console.log(
-      roles.map((role: any) => ({ [role.role]: null, level: role.level })),
-    );
-
-    const {
-      documentType,
-      projectName,
-      projectCode,
-      constructorChef,
-      demandItems,
-    } = createDemandDto;
-
+    const { projectId, demandItems } = createDemandDto;
+    const project = await this.projectModel.findById(projectId);
     const demandData = {
-      documentType,
-      projectName,
-      projectCode,
+      projectName: project.name,
+      projectCode: project.code,
       demandRequester: findUser._id,
-      constructorChef,
+      constructorChef: project.chef,
+      project: project,
       demandItems,
       roles: roles.reduce((acc: any, role: any) => {
         acc[role.role] = {
@@ -60,6 +58,47 @@ export class DemandsService {
     await demand.save();
 
     return demand;
+  }
+
+  async updateDemand(
+    createDemandDto: UpdateDemandDto,
+    documentRequesterId: string,
+  ) {
+    const findUser = await this.userModel.findById(documentRequesterId);
+
+    if (!findUser) {
+      throw new Error('User not found');
+    }
+
+    const roles = await this.roleModel.find({});
+
+    const { projectId, demandItems } = createDemandDto;
+    const project = await this.projectModel.findById(projectId);
+    const demandData = {
+      projectName: project.name,
+      projectCode: project.code,
+      demandRequester: findUser._id,
+      constructorChef: project.chef,
+      project: project,
+      demandItems,
+      roles: roles.reduce((acc: any, role: any) => {
+        acc[role.role] = {
+          status: null,
+          level: role.level || null, // Her role için level ekliyoruz
+        };
+        return acc;
+      }, {}),
+    };
+    console.log(demandData);
+    const response = await this.demandModel.findByIdAndUpdate(
+      createDemandDto.id,
+      {
+        ...demandData,
+      },
+      { new: true },
+    );
+    console.log(response);
+    return response
   }
 
   async approveDemand(demandId: string, userId: string) {
@@ -90,12 +129,19 @@ export class DemandsService {
     }
 
     const lowerLevelRole = Object.keys(findDocument.roles).find((role) => {
-      return findDocument.roles[role].level === findUserRoleLevel - 2;
+      return findDocument.roles[role].level === findUserRoleLevel;
     });
 
-    if (lowerLevelRole && findDocument.roles[lowerLevelRole].status !== true) {
-      throw new Error(
-        `Approval denied. The role ${lowerLevelRole} (level ${findUserRoleLevel - 2}) must approve first.`,
+    const higherLeveLRole = Object.keys(findDocument.roles).find((role) => {
+      return findDocument.roles[role].level === findUserRoleLevel - 1;
+    });
+
+    if (
+      higherLeveLRole &&
+      findDocument.roles[higherLeveLRole].status !== true
+    ) {
+      throw new BadRequestException(
+        `${lowerLevelRole} onaylamadan önce ${higherLeveLRole} onaylaması lazım.`,
       );
     }
 
@@ -225,61 +271,124 @@ export class DemandsService {
     return addRoleToDemand;
   }
 
-  async addFirmToDemand(demandId: string, firms: Array<any>, notes: string) {
-    const findDocument = await this.demandModel.findById(demandId).lean();
+  async findAll(page: number, currentUserId: string) {
+    const currentUser = await this.userModel.findById(currentUserId);
 
-    console.log('document', findDocument);
+    const query: any = {
+      isDeleted: false,
+    };
+    console.log(currentUser.isAdmin);
+    if (currentUser.isAdmin != true) {
+      const currentUserProjects = await this.userProjectModel.find({
+        user: currentUser,
+      });
+      const projectIds = currentUserProjects.map((project) => project.project);
 
-    if (!findDocument) {
-      throw new Error('Document not found');
+      query.project = {
+        $in: projectIds,
+      };
     }
-
-    const addFirmToDemand = await this.demandModel.findByIdAndUpdate(
-      demandId,
-      {
-        $push: {
-          firms: {
-            $each: firms.map((firm) => ({
-              _id: uuidv4(), // Her firmaya unique bir ID atıyoruz
-              ...firm,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })),
-          },
-        },
-        notes: notes,
-      },
-      { new: true },
-    );
-
-    console.log(addFirmToDemand);
-
-    return addFirmToDemand;
+    const count = await this.demandModel.countDocuments(query).exec();
+    const page_total = Math.floor((count - 1) / 20) + 1;
+    const data = await this.demandModel
+      .find(query)
+      .populate('project')
+      .populate('demandRequester')
+      .sort({
+        createdAt: -1,
+      })
+      .limit(20)
+      .skip(page * 20)
+      .exec();
+    return {
+      data: data,
+      page_total: page_total,
+    };
   }
 
-  async deleteFirmFromDemand(demandId: string, firmId: string) {
-    const findDocument = await this.demandModel.findById(demandId).lean();
-
-    console.log('document', findDocument);
-
-    if (!findDocument) {
-      throw new Error('Document not found');
+  async filter(
+    name: string,
+    page: number,
+    startDate: string,
+    endDate: string,
+    showOnlyNew: boolean | undefined,
+    showWatingApprove: boolean | undefined,
+    showArhive: boolean | undefined,
+    currentUserId: string,
+  ) {
+    const currentUser = await this.userModel.findById(currentUserId);
+    console.log(currentUser);
+    const query: any = {
+      projectName: { $regex: name, $options: 'i' },
+      constructorChef: { $regex: name, $options: 'i' },
+      isDeleted: false,
+    };
+    if (showOnlyNew != undefined) {
+      query.readUsers = { $ne: currentUserId };
     }
+    if (showArhive != undefined) {
+      query.isDeleted = true;
+    }
+    if (showWatingApprove != undefined) {
+      query[`roles.${currentUser.role}.status`] = { $ne: true };
+    }
+    if (startDate != '') {
+      query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
+    }
+    if (endDate != '') {
+      query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
+    }
+    if (currentUser.isAdmin != true) {
+      const currentUserProjects = await this.userProjectModel.find({
+        user: currentUser,
+      });
+      const projectIds = currentUserProjects.map((project) => project.project);
 
-    const deleteFirmFromDemand = await this.demandModel.findByIdAndUpdate(
-      demandId,
+      query.project = {
+        $in: projectIds,
+      };
+    }
+    console.log(query);
+    const count = await this.demandModel.countDocuments(query).exec();
+    const page_total = Math.floor((count - 1) / 20) + 1;
+    const data = await this.demandModel
+      .find(query)
+      .populate('project')
+      .populate('demandRequester')
+      .sort({
+        createdAt: -1,
+      })
+      .limit(20)
+      .skip(page * 20)
+      .exec();
+    return {
+      data: data,
+      page_total: page_total,
+    };
+  }
+
+  remove(id: string) {
+    return this.demandModel.findByIdAndUpdate(
+      id,
       {
-        $pull: {
-          firms: {
-            _id: firmId,
-          },
-        },
+        isDeleted: true,
       },
       { new: true },
     );
+  }
 
-    console.log(deleteFirmFromDemand);
-
-    return deleteFirmFromDemand;
+  async read(id: string, userId: string) {
+    const data = await this.demandModel.findById(id);
+    if (!(data.readUsers ?? []).includes(userId)) {
+      return this.demandModel.findByIdAndUpdate(
+        id,
+        {
+          readUsers: [...data.readUsers, userId],
+        },
+        { new: true },
+      );
+    } else {
+      return true;
+    }
   }
 }

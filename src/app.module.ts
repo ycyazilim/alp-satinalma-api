@@ -7,6 +7,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { DemandsModule } from './modules/demands/demands.module';
 import { UsersModule } from './modules/users/users.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { CompareModule } from './modules/compare/compare.module';
+import { UserProjectsModule } from "./modules/user-projects/user.projects.module";
 
 @Module({
   imports: [
@@ -21,10 +24,13 @@ import { UsersModule } from './modules/users/users.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ProjectsModule,
     AuthModule,
     RolesModule,
     DemandsModule,
+    CompareModule,
     UsersModule,
+    UserProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

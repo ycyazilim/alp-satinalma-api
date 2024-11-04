@@ -1,15 +1,37 @@
-import { Body, Controller, Delete, Get, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from 'src/dtos/create-user.dto';
 import { UpdateUserDto } from 'src/dtos/update-user.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query('page') page: string) {
+    return this.usersService.findAll(+page);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('filter')
+  filter(
+    @Query('name') name: string,
+    @Query('page') page: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.usersService.filter(name, +page, startDate, endDate);
   }
 
   @Post('create')
@@ -22,9 +44,10 @@ export class UsersController {
     return this.usersService.delete(id);
   }
 
-  @Put('update')
-  update(@Body() updateUserDto: UpdateUserDto, @Body('id') id: string) {
-    return this.usersService.updateUser(id, updateUserDto);
+  @Post('update')
+  update(@Body() updateUserDto: UpdateUserDto) {
+    console.log(updateUserDto);
+    return this.usersService.updateUser(updateUserDto);
   }
 
   @Get('find')

@@ -6,13 +6,52 @@ import { User, UserDocument } from 'src/schemas/user.schema';
 
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from 'src/dtos/update-user.dto';
+import { Role, RoleDocument } from '../../schemas/role.schema';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
+  ) {}
 
-  findAll() {
-    return this.userModel.find();
+  async findAll(page: number) {
+    const count = await this.userModel.countDocuments({}).exec();
+    const page_total = Math.floor((count - 1) / 20) + 1;
+    const data = await this.userModel
+      .find({ isDeleted: false })
+      .limit(20)
+      .skip(page * 20)
+      .exec();
+    return {
+      data: data,
+      page_total: page_total,
+    };
+  }
+
+  async filter(name: string, page: number, startDate: string, endDate: string) {
+    const query: any = {
+      nameSurname: { $regex: name, $options: 'i' },
+      isDeleted: false,
+    };
+    if (startDate != '') {
+      query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
+    }
+
+    if (endDate != '') {
+      query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
+    }
+    const count = await this.userModel.countDocuments(query).exec();
+    const page_total = Math.floor((count - 1) / 20) + 1;
+    const data = await this.userModel
+      .find(query)
+      .limit(20)
+      .skip(page * 20)
+      .exec();
+    return {
+      data: data,
+      page_total: page_total,
+    };
   }
 
   getSingleUser(id: string) {
@@ -29,11 +68,12 @@ export class UsersService {
     }
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
-
+    const findRole = await this.roleModel.findById(createUserDto.role);
     const newUser = new this.userModel({
+      nameSurname: createUserDto.nameSurname,
       email: createUserDto.email,
       password: hashedPassword,
-      role: createUserDto.role,
+      role: findRole.role,
     });
 
     await newUser.save();
@@ -42,12 +82,33 @@ export class UsersService {
   }
 
   delete(id: string) {
-    return this.userModel.findByIdAndDelete(id);
+    return this.userModel.findByIdAndUpdate(
+      id,
+      {
+        isDeleted: true,
+      },
+      { new: true },
+    );
   }
 
-  updateUser(userId: string, updateUserDto: UpdateUserDto) {
-    return this.userModel.findByIdAndUpdate(userId, updateUserDto, {
-      new: true,
-    });
+  async updateUser(updateUserDto: UpdateUserDto) {
+    const userModel = await this.userModel.findById(updateUserDto.id);
+    if (updateUserDto.password != '') {
+      console.log("pasdawakmdalkmdlaksmdl");
+      const hashedPassword = await bcrypt.hash(updateUserDto.password, 12);
+      userModel.password = hashedPassword;
+    }
+    userModel.email = updateUserDto.email;
+    userModel.nameSurname = updateUserDto.nameSurname;
+    const findRole = await this.roleModel.findById(updateUserDto.role);
+
+    userModel.role = findRole.role;
+    return this.userModel.findByIdAndUpdate(
+      updateUserDto.id,
+      { ...userModel },
+      {
+        new: true,
+      },
+    );
   }
 }

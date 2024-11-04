@@ -19,16 +19,22 @@ export class RolesService {
   }
 
   async deleteRole(id: string) {
-    return await this.roleModel.findByIdAndDelete(id);
+    return this.roleModel.findByIdAndUpdate(
+      id,
+      {
+        isDeleted: true,
+      },
+      { new: true },
+    );
   }
 
-  async updateRole(id: string, updateRoleDto: CreateRoleDto) {
-    return await this.roleModel.findByIdAndUpdate(id, updateRoleDto, {
+  updateRole(id: string, updateRoleDto: CreateRoleDto) {
+    return this.roleModel.findByIdAndUpdate(id, updateRoleDto, {
       new: true,
     });
   }
 
-  async getRole() {
-    return await this.roleModel.find();
+  getRole() {
+    return this.roleModel.find({ isDeleted: false });
   }
 }

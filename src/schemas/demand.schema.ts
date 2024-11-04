@@ -2,22 +2,37 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { UserDocument } from './user.schema';
 
 import * as mongoose from 'mongoose';
+import { ProjectDocument } from './project.schema';
 
 @Schema({
   timestamps: true,
 })
 export class Demand {
   @Prop({
-    type: String,
-    required: true,
+    ref: 'Project',
+    type: mongoose.Schema.Types.ObjectId,
   })
-  documentType: string;
+  project: ProjectDocument;
 
   @Prop({
     type: String,
     required: true,
   })
   projectName: string;
+
+  @Prop({
+    type: Boolean,
+    required: true,
+    default: false,
+  })
+  isDeleted: boolean;
+
+  @Prop({
+    type: Array,
+    required: true,
+    default: [],
+  })
+  readUsers: Array<string>;
 
   @Prop({
     type: String,
@@ -44,21 +59,8 @@ export class Demand {
   })
   demandItems: Array<any>;
 
-  @Prop({
-    type: Array,
-    required: true,
-    default: [],
-  })
-  firms: Array<any>;
-
-  // Use Mixed to allow any arbitrary fields
   @Prop({ type: mongoose.Schema.Types.Mixed, default: {} })
   roles: Record<string, any>;
-
-  @Prop({
-    type: String,
-  })
-  notes: string;
 }
 
 export type DemandDocument = Demand & Document;

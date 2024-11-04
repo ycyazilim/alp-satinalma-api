@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import mongoose from 'mongoose';
+import { ProjectDocument } from './project.schema';
 
 @Schema({
   timestamps: true,
@@ -14,12 +16,31 @@ export class User {
   @Prop({
     type: String,
   })
+  nameSurname: string;
+
+  @Prop({
+    type: String,
+  })
   password: string;
 
   @Prop({
     type: String,
   })
   role: string;
+
+  @Prop({
+    type: Boolean,
+    required: true,
+    default: false,
+  })
+  isDeleted: boolean;
+
+  @Prop({
+    type: Boolean,
+    required: true,
+    default: false,
+  })
+  isAdmin: boolean;
 }
 
 export type UserDocument = User & Document;

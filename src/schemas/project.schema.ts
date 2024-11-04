@@ -4,16 +4,21 @@ import { Document } from 'mongoose';
 @Schema({
   timestamps: true,
 })
-export class Role {
+export class Project {
   @Prop({
     type: String,
   })
-  role: string;
+  name: string;
 
   @Prop({
-    type: Number,
+    type: String,
   })
-  level: number;
+  code: string;
+
+  @Prop({
+    type: String,
+  })
+  chef: string;
 
   @Prop({
     type: Boolean,
@@ -23,8 +28,8 @@ export class Role {
   isDeleted: boolean;
 }
 
-export type RoleDocument = Role & Document;
+export type ProjectDocument = Project & Document;
 
-const RoleSchema = SchemaFactory.createForClass(Role);
+const ProjectSchema = SchemaFactory.createForClass(Project);
 
-export { RoleSchema };
+export { ProjectSchema };
