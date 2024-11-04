@@ -41,6 +41,11 @@ export class User {
     default: false,
   })
   isAdmin: boolean;
+
+  @Prop({
+    type: String,
+  })
+  oneSignalId: string;
 }
 
 export type UserDocument = User & Document;

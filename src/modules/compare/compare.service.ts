@@ -13,6 +13,7 @@ import {
   UserProjectDocument,
 } from '../../schemas/user.projects.schema';
 import { EditCompareDto } from '../../dtos/edit-compare.dto';
+import { NotifiactionsService } from '../notifications/notifiactions.service';
 
 @Injectable()
 export class CompareService {
@@ -24,6 +25,7 @@ export class CompareService {
     @InjectModel(Project.name) private projectModel: Model<ProjectDocument>,
     @InjectModel(UserProject.name)
     private userProjectModel: Model<UserProjectDocument>,
+    private notificanctions: NotifiactionsService,
   ) {}
 
   async createCompare(
@@ -61,7 +63,21 @@ export class CompareService {
 
     const compare = new this.compareModel(compareData);
     await compare.save();
-
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: demand.project._id,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        'Projenize bir karşılaştırma eklendi',
+        'Proje karşılaştırma',
+        3,
+      );
+    }
     return compare;
   }
   async updateCompare(
@@ -96,6 +112,22 @@ export class CompareService {
         return acc;
       }, {}),
     };
+
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: demand.project._id,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        'Projenizede bir karşılaştırma güncellendi',
+        'Proje karşılaştırma',
+        3,
+      );
+    }
     return this.compareModel.findByIdAndUpdate(
       createCompareDto.id,
       {
@@ -161,7 +193,21 @@ export class CompareService {
     );
 
     console.log('updateDocumentRole', updateDocumentRole);
-
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.projectId,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir karşılaştırması ${findUserRole} tarafından onaylandı`,
+        'Proje karşılaştırması',
+        3,
+      );
+    }
     return updateDocumentRole;
   }
 
@@ -208,6 +254,22 @@ export class CompareService {
       },
       { new: true },
     );
+
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.projectId,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir karşılaştırması ${findUserRole} tarafından red edildi`,
+        'Proje karşılaştırması',
+        3,
+      );
+    }
 
     console.log('updateDocumentRole', updateDocumentRole);
 

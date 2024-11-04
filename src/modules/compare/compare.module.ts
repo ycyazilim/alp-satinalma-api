@@ -8,8 +8,12 @@ import { Role, RoleSchema } from 'src/schemas/role.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Project, ProjectSchema } from '../../schemas/project.schema';
-import { Compare, CompareScheme } from "../../schemas/compare.schema";
-import { UserProject, UserProjectScheme } from "../../schemas/user.projects.schema";
+import { Compare, CompareScheme } from '../../schemas/compare.schema';
+import {
+  UserProject,
+  UserProjectScheme,
+} from '../../schemas/user.projects.schema';
+import { NotifiactionsService } from "../notifications/notifiactions.service";
 
 @Module({
   imports: [
@@ -47,6 +51,6 @@ import { UserProject, UserProjectScheme } from "../../schemas/user.projects.sche
     ]),
   ],
   controllers: [CompareController],
-  providers: [CompareService],
+  providers: [CompareService, NotifiactionsService],
 })
 export class CompareModule {}

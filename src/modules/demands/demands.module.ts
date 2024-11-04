@@ -8,7 +8,11 @@ import { Role, RoleSchema } from 'src/schemas/role.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Project, ProjectSchema } from '../../schemas/project.schema';
-import { UserProject, UserProjectScheme } from "../../schemas/user.projects.schema";
+import {
+  UserProject,
+  UserProjectScheme,
+} from '../../schemas/user.projects.schema';
+import { NotifiactionsService } from '../notifications/notifiactions.service';
 
 @Module({
   imports: [
@@ -42,6 +46,6 @@ import { UserProject, UserProjectScheme } from "../../schemas/user.projects.sche
     ]),
   ],
   controllers: [DemandsController],
-  providers: [DemandsService],
+  providers: [DemandsService, NotifiactionsService],
 })
 export class DemandsModule {}

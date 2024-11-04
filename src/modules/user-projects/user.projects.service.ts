@@ -9,6 +9,7 @@ import {
 import { Project, ProjectDocument } from '../../schemas/project.schema';
 import { User, UserDocument } from '../../schemas/user.schema';
 import { UpdateUserProjectDto } from './dto/update-project.dto';
+import { NotifiactionsService } from '../notifications/notifiactions.service';
 
 @Injectable()
 export class UserProjectsService {
@@ -19,6 +20,7 @@ export class UserProjectsService {
     private projects: Model<ProjectDocument>,
     @InjectModel(User.name)
     private users: Model<UserDocument>,
+    private notificanctions: NotifiactionsService,
   ) {}
 
   async create(createProjectDto: CreateUserProjectDto) {
@@ -32,6 +34,13 @@ export class UserProjectsService {
       user: user,
       project: projectData,
     });
+    await this.notificanctions.createOneSignalNotificationSpecificUser(
+      createProjectDto.userId,
+      'Yeni projeye atandınız',
+      'Yeni Proje',
+
+      1,
+    );
     return await project.save();
   }
 
@@ -41,6 +50,12 @@ export class UserProjectsService {
     console.log(createProjectDto.userId);
     const projectData = await this.projects.findById(
       createProjectDto.projectId,
+    );
+    await this.notificanctions.createOneSignalNotificationSpecificUser(
+      createProjectDto.userId,
+      'Atandığınız proje güncellendi',
+      'Proje güncelemesi',
+      1,
     );
     return this.userProject.findByIdAndUpdate(
       createProjectDto.id,

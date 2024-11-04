@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model } from 'mongoose';
+import { Model } from 'mongoose';
 import { CreateDemandDto } from 'src/dtos/create-demand.dto';
 import { Demand, DemandDocument } from 'src/schemas/demand.schema';
 import { Role, RoleDocument } from 'src/schemas/role.schema';
@@ -11,17 +11,21 @@ import {
   UserProject,
   UserProjectDocument,
 } from '../../schemas/user.projects.schema';
-import { UpdateDemandDto } from "../../dtos/update-demand.dto";
+import { UpdateDemandDto } from '../../dtos/update-demand.dto';
+import { NotifiactionsService } from '../notifications/notifiactions.service';
 
 @Injectable()
 export class DemandsService {
   constructor(
+    @InjectModel(UserProject.name)
+    private userProject: Model<UserProjectDocument>,
     @InjectModel(Demand.name) private demandModel: Model<DemandDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
     @InjectModel(Project.name) private projectModel: Model<ProjectDocument>,
     @InjectModel(UserProject.name)
     private userProjectModel: Model<UserProjectDocument>,
+    private notificanctions: NotifiactionsService,
   ) {}
 
   async createDemand(
@@ -56,7 +60,21 @@ export class DemandsService {
 
     const demand = new this.demandModel(demandData);
     await demand.save();
-
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: createDemandDto.projectId,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        'Projenize bir talep eklendi',
+        'Proje talebi',
+        2,
+      );
+    }
     return demand;
   }
 
@@ -98,7 +116,23 @@ export class DemandsService {
       { new: true },
     );
     console.log(response);
-    return response
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: createDemandDto.projectId,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        'Projenizde bir talep güncellendi',
+        'Proje talebi',
+        2,
+      );
+    }
+
+    return response;
   }
 
   async approveDemand(demandId: string, userId: string) {
@@ -156,7 +190,21 @@ export class DemandsService {
     );
 
     console.log('updateDocumentRole', updateDocumentRole);
-
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.project,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir talep ${findUserRole} tarafından onaylandı`,
+        'Proje talebi',
+        2,
+      );
+    }
     return updateDocumentRole;
   }
 
@@ -194,7 +242,21 @@ export class DemandsService {
     );
 
     console.log('rejectDemandByUser', rejectDemandByUser);
-
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.project,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      await this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir talep ${findUserRole} tarafından red edildi`,
+        'Proje talebi',
+        2,
+      );
+    }
     return rejectDemandByUser;
   }
 

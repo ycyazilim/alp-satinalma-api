@@ -10,6 +10,7 @@ import {
 } from '../../schemas/user.projects.schema';
 import { Project, ProjectSchema } from '../../schemas/project.schema';
 import { User, UserSchema } from '../../schemas/user.schema';
+import { NotifiactionsService } from '../notifications/notifiactions.service';
 
 @Module({
   imports: [
@@ -35,6 +36,6 @@ import { User, UserSchema } from '../../schemas/user.schema';
     ]),
   ],
   controllers: [UserProjectsController],
-  providers: [UserProjectsService],
+  providers: [UserProjectsService, NotifiactionsService],
 })
 export class UserProjectsModule {}

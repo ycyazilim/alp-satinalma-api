@@ -110,4 +110,13 @@ export class UsersService {
       },
     );
   }
+  addOneSignal(oneSignalId: string, userId: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { oneSignalId: oneSignalId },
+      {
+        new: true,
+      },
+    );
+  }
 }

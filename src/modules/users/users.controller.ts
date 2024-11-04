@@ -12,6 +12,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from 'src/dtos/create-user.dto';
 import { UpdateUserDto } from 'src/dtos/update-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../decorators/current-user';
 
 @Controller('users')
 export class UsersController {
@@ -48,6 +49,12 @@ export class UsersController {
   update(@Body() updateUserDto: UpdateUserDto) {
     console.log(updateUserDto);
     return this.usersService.updateUser(updateUserDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('addOneSignal')
+  addOneSignal(@Body('oneSignalId') id: string, @CurrentUser() currentUser) {
+    return this.usersService.addOneSignal(id, currentUser._id);
   }
 
   @Get('find')

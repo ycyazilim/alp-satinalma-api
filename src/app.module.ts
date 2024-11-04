@@ -10,6 +10,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { CompareModule } from './modules/compare/compare.module';
 import { UserProjectsModule } from "./modules/user-projects/user.projects.module";
+import { NotifiactionsModule } from "./modules/notifications/notifiactions.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UserProjectsModule } from "./modules/user-projects/user.projects.module
     CompareModule,
     UsersModule,
     UserProjectsModule,
+    NotifiactionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
