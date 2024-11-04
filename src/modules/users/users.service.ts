@@ -94,7 +94,6 @@ export class UsersService {
   async updateUser(updateUserDto: UpdateUserDto) {
     const userModel = await this.userModel.findById(updateUserDto.id);
     if (updateUserDto.password != '') {
-      console.log("pasdawakmdalkmdlaksmdl");
       const hashedPassword = await bcrypt.hash(updateUserDto.password, 12);
       userModel.password = hashedPassword;
     }

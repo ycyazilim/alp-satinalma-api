@@ -12,6 +12,7 @@ import {
   UserProject,
   UserProjectDocument,
 } from '../../schemas/user.projects.schema';
+import { EditCompareDto } from '../../dtos/edit-compare.dto';
 
 @Injectable()
 export class CompareService {
@@ -62,6 +63,46 @@ export class CompareService {
     await compare.save();
 
     return compare;
+  }
+  async updateCompare(
+    createCompareDto: EditCompareDto,
+    documentRequesterId: string,
+  ) {
+    const findUser = await this.userModel.findById(documentRequesterId);
+
+    if (!findUser) {
+      throw new Error('User not found');
+    }
+
+    const roles = await this.roleModel.find({});
+    const { demandId, firms, note, selectedCompanyId } = createCompareDto;
+    console.log(demandId);
+    const demand = await this.demandModel
+      .findById(demandId)
+      .populate('project');
+    console.log(demand);
+    const compareData = {
+      projectId: demand.project._id,
+      project: demand.project,
+      demand: demand,
+      firms: firms,
+      note: note,
+      selectedCompanyId: selectedCompanyId,
+      roles: roles.reduce((acc: any, role: any) => {
+        acc[role.role] = {
+          status: null,
+          level: role.level || null, // Her role için level ekliyoruz
+        };
+        return acc;
+      }, {}),
+    };
+    return this.compareModel.findByIdAndUpdate(
+      createCompareDto.id,
+      {
+        ...compareData,
+      },
+      { new: true },
+    );
   }
 
   async approveCompare(demandId: string, userId: string) {
@@ -114,6 +155,55 @@ export class CompareService {
       {
         $set: {
           [`roles.${findUserRole}.status`]: true,
+        },
+      },
+      { new: true },
+    );
+
+    console.log('updateDocumentRole', updateDocumentRole);
+
+    return updateDocumentRole;
+  }
+
+  async dennyCompare(demandId: string, userId: string) {
+    const findUser = await this.userModel.findById(userId).lean();
+    const findDocument = await this.compareModel.findById(demandId).lean();
+    console.log('document', demandId);
+
+    console.log('approve user', findUser);
+    console.log('document', findDocument);
+
+    const findUserRole: any = findUser.role;
+
+    if (!findDocument) {
+      throw new Error('Document not found');
+    }
+
+    if (!findUser) {
+      throw new Error('User not found');
+    }
+
+    if (!findUserRole) {
+      throw new Error('User role not found');
+    }
+
+    const findUserRoleLevel = findDocument.roles[findUserRole]?.level;
+
+    if (!findUserRoleLevel) {
+      throw new Error('Role level not found for this user');
+    }
+
+    const lowerLevelRole = Object.keys(findDocument.roles).find((role) => {
+      return findDocument.roles[role].level === findUserRoleLevel;
+    });
+
+    console.log(lowerLevelRole);
+
+    const updateDocumentRole = await this.compareModel.findByIdAndUpdate(
+      demandId,
+      {
+        $set: {
+          [`roles.${findUserRole}.status`]: false,
         },
       },
       { new: true },

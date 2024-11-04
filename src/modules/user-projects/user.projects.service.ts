@@ -8,6 +8,7 @@ import {
 } from '../../schemas/user.projects.schema';
 import { Project, ProjectDocument } from '../../schemas/project.schema';
 import { User, UserDocument } from '../../schemas/user.schema';
+import { UpdateUserProjectDto } from './dto/update-project.dto';
 
 @Injectable()
 export class UserProjectsService {
@@ -32,6 +33,23 @@ export class UserProjectsService {
       project: projectData,
     });
     return await project.save();
+  }
+
+  async update(createProjectDto: UpdateUserProjectDto) {
+    const user = await this.users.findById(createProjectDto.userId);
+    console.log(user);
+    console.log(createProjectDto.userId);
+    const projectData = await this.projects.findById(
+      createProjectDto.projectId,
+    );
+    return this.userProject.findByIdAndUpdate(
+      createProjectDto.id,
+      {
+        user: user,
+        project: projectData,
+      },
+      { new: true },
+    );
   }
 
   async findAll(page: number) {
