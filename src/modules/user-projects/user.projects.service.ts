@@ -82,6 +82,9 @@ export class UserProjectsService {
       page_total: page_total,
     };
   }
+  detail(id: string) {
+    return this.userProject.findById(id);
+  }
 
   async filter(name: string, page: number, startDate: string, endDate: string) {
     const query: any = {

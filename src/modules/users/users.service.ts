@@ -28,7 +28,9 @@ export class UsersService {
       page_total: page_total,
     };
   }
-
+  detail(id: string) {
+    return this.userModel.findById(id);
+  }
   async filter(name: string, page: number, startDate: string, endDate: string) {
     const query: any = {
       nameSurname: { $regex: name, $options: 'i' },

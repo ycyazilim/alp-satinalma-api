@@ -37,4 +37,7 @@ export class RolesService {
   getRole() {
     return this.roleModel.find({ isDeleted: false });
   }
+  detail(id: string) {
+    return this.roleModel.findById(id);
+  }
 }

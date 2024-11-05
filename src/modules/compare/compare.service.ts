@@ -318,6 +318,16 @@ export class CompareService {
       page_total: page_total,
     };
   }
+  async detail(id: string) {
+    return this.compareModel.findById(id).populate({
+      path: 'demand',
+      populate: [
+        { path: 'project', model: 'Project' },
+
+        { path: 'demandRequester', model: 'User' },
+      ],
+    });
+  }
 
   async filter(
     name: string,

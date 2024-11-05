@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from 'src/dtos/create-role.dto';
@@ -35,5 +36,10 @@ export class RolesController {
   @Get('get')
   async getRole() {
     return await this.rolesService.getRole();
+  }
+
+  @Get('detail')
+  detail(@Query('id') id: string) {
+    return this.rolesService.detail(id);
   }
 }

@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Post,
-  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +21,12 @@ export class UsersController {
   @Get()
   findAll(@Query('page') page: string) {
     return this.usersService.findAll(+page);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('detail')
+  detail(@Query('id') id: string) {
+    return this.usersService.detail(id);
   }
 
   @UseGuards(JwtAuthGuard)

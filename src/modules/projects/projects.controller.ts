@@ -33,6 +33,12 @@ export class ProjectsController {
   findAll(@Query('page') page: string) {
     return this.projectsService.findAll(+page);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('detail')
+  detail(@Query('id') id: string) {
+    return this.projectsService.detail(id);
+  }
   @UseGuards(JwtAuthGuard)
   @Get('filter')
   filter(

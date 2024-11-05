@@ -39,6 +39,9 @@ export class ProjectsService {
       page_total: page_total,
     };
   }
+  async detail(id: string) {
+    return this.projectModel.findById(id);
+  }
   async filter(name: string, page: number, startDate: string, endDate: string) {
     const query: any = {
       name: { $regex: name, $options: 'i' },

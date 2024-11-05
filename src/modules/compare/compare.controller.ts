@@ -52,6 +52,7 @@ export class CompareController {
   dennyCompare(@Body('demandId') demandId: string, @CurrentUser() currentUser) {
     return this.compareService.dennyCompare(demandId, currentUser._id);
   }
+
   @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query('page') page: string, @CurrentUser() currentUser) {
@@ -59,10 +60,17 @@ export class CompareController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('detail')
+  detail(@Query('id') id: string) {
+    return this.compareService.detail(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('read')
   read(@Body('id') id: string, @CurrentUser() currentUser) {
     return this.compareService.read(id, currentUser._id);
   }
+
   @UseGuards(JwtAuthGuard)
   @Get('filter')
   filter(

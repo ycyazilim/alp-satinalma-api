@@ -367,6 +367,12 @@ export class DemandsService {
       page_total: page_total,
     };
   }
+  async detail(id: string) {
+    return this.demandModel
+      .findById(id)
+      .populate('project')
+      .populate('demandRequester');
+  }
 
   async filter(
     name: string,

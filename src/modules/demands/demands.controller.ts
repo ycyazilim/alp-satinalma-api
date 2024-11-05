@@ -12,7 +12,7 @@ import { DemandsService } from './demands.service';
 import { CreateDemandDto } from 'src/dtos/create-demand.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/decorators/current-user';
-import { UpdateDemandDto } from "../../dtos/update-demand.dto";
+import { UpdateDemandDto } from '../../dtos/update-demand.dto';
 
 @Controller('demands')
 export class DemandsController {
@@ -75,6 +75,12 @@ export class DemandsController {
   @Get()
   findAll(@Query('page') page: string, @CurrentUser() currentUser) {
     return this.demandsService.findAll(+page, currentUser._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('detail')
+  detail(@Query('id') id: string) {
+    return this.demandsService.detail(id);
   }
   @UseGuards(JwtAuthGuard)
   @Get('filter')
