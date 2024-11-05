@@ -30,6 +30,16 @@ export class UserProjectsService {
     const projectData = await this.projects.findById(
       createProjectDto.projectId,
     );
+    const oldData = await this.userProject.findOne({
+      project: projectData,
+      user: user,
+      isDeleted: false,
+    });
+    console.log(oldData);
+
+    if (oldData) {
+      return oldData;
+    }
     const project = new this.userProject({
       user: user,
       project: projectData,
@@ -51,6 +61,16 @@ export class UserProjectsService {
     const projectData = await this.projects.findById(
       createProjectDto.projectId,
     );
+
+    const oldData = await this.userProject.findOne({
+      project: projectData,
+      user: user,
+      isDeleted: false,
+    });
+    console.log(oldData);
+    if (oldData) {
+      return oldData;
+    }
     await this.notificanctions.createOneSignalNotificationSpecificUser(
       createProjectDto.userId,
       'Atandığınız proje güncellendi',
@@ -83,7 +103,7 @@ export class UserProjectsService {
     };
   }
   detail(id: string) {
-    return this.userProject.findById(id);
+    return this.userProject.findById(id).populate('user').populate('project');
   }
 
   async filter(name: string, page: number, startDate: string, endDate: string) {

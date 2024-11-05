@@ -36,7 +36,7 @@ export class UserProjectsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('detail')
-  detail(@Query('page') id: string) {
+  detail(@Query('id') id: string) {
     return this.projectsService.detail(id);
   }
   @UseGuards(JwtAuthGuard)
