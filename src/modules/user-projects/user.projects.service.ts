@@ -92,7 +92,10 @@ export class UserProjectsService {
     const page_total = Math.floor((count - 1) / 20) + 1;
     const data = await this.userProject
       .find({ isDeleted: false })
-      .populate('user')
+      .populate({
+        path: 'user',
+        populate: [{ path: 'role', model: 'Role' }],
+      })
       .populate({
         path: 'project',
         populate: [{ path: 'company', model: 'Company' }],
@@ -125,7 +128,10 @@ export class UserProjectsService {
     const page_total = Math.floor((count - 1) / 20) + 1;
     const data = await this.userProject
       .find(query)
-      .populate('user')
+      .populate({
+        path: 'user',
+        populate: [{ path: 'role', model: 'Role' }],
+      })
       .populate({
         path: 'project',
         populate: [{ path: 'company', model: 'Company' }],
