@@ -1,15 +1,12 @@
 import { IsString } from 'class-validator';
 
-export class CreateProjectDto {
+export class UpdateCompanyDto {
   @IsString()
   name: string;
 
   @IsString()
-  code: string;
+  vkn: string;
 
   @IsString()
-  chef: string;
-
-  @IsString()
-  companyId: string;
+  id: string;
 }

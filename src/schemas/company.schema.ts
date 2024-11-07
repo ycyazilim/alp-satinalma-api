@@ -4,18 +4,16 @@ import { Document } from 'mongoose';
 @Schema({
   timestamps: true,
 })
-export class Role {
+export class Company {
   @Prop({
     type: String,
   })
-  role: string;
+  vkn: string;
 
   @Prop({
-    type: Boolean,
-    required: true,
-    default: false,
+    type: String,
   })
-  isObserver: boolean;
+  name: string;
 
   @Prop({
     type: Boolean,
@@ -25,8 +23,8 @@ export class Role {
   isDeleted: boolean;
 }
 
-export type RoleDocument = Role & Document;
+export type CompanyDocument = Company & Document;
 
-const RoleSchema = SchemaFactory.createForClass(Role);
+const CompanySchema = SchemaFactory.createForClass(Company);
 
-export { RoleSchema };
+export { CompanySchema };

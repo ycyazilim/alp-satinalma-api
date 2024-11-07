@@ -16,7 +16,7 @@ export class AuthService {
   ) {}
 
   async registerUser(registerDto: RegisterDto) {
-    const { email, password, role } = registerDto;
+    const { email, password } = registerDto;
     const user = await this.userModel.findOne({ email }).lean();
     if (user) {
       throw new BadRequestException('email already exists');
@@ -25,7 +25,6 @@ export class AuthService {
     const newUser = new this.userModel({
       email,
       password: hashedPassword,
-      role: role ? role : 'yonetici1',
     });
 
     await newUser.save();
@@ -43,7 +42,7 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    const findUser = await this.userModel.findOne({ email }).lean();
+    const findUser = await this.userModel.findOne({ email }).populate('role');
 
     if (!findUser) {
       throw new BadRequestException('email or password is incorrect');
@@ -67,6 +66,6 @@ export class AuthService {
 
   getUser(userId: string) {
     console.log(userId);
-    return this.userModel.findById(userId).lean();
+    return this.userModel.findById(userId).populate('role');
   }
 }

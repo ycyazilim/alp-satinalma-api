@@ -6,4 +6,7 @@ export class CreateDemandDto {
 
   @IsArray()
   demandItems: Array<any>;
+
+  @IsArray()
+  approves: Array<any>;
 }

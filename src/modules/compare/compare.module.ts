@@ -13,7 +13,13 @@ import {
   UserProject,
   UserProjectScheme,
 } from '../../schemas/user.projects.schema';
-import { NotifiactionsService } from "../notifications/notifiactions.service";
+import { NotifiactionsService } from '../notifications/notifiactions.service';
+import { Product, ProductSchema } from '../../schemas/product.schema';
+import {
+  ProductOffer,
+  ProductOfferSchema,
+} from '../../schemas/product.offer.schema';
+import { ProductService } from '../products/product.service';
 
 @Module({
   imports: [
@@ -48,9 +54,17 @@ import { NotifiactionsService } from "../notifications/notifiactions.service";
         name: UserProject.name,
         schema: UserProjectScheme,
       },
+      {
+        name: Product.name,
+        schema: ProductSchema,
+      },
+      {
+        name: ProductOffer.name,
+        schema: ProductOfferSchema,
+      },
     ]),
   ],
   controllers: [CompareController],
-  providers: [CompareService, NotifiactionsService],
+  providers: [CompareService, NotifiactionsService, ProductService],
 })
 export class CompareModule {}

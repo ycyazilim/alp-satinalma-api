@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import mongoose from 'mongoose';
+import { CompanyDocument } from './company.schema';
 
 @Schema({
   timestamps: true,
@@ -19,6 +21,12 @@ export class Project {
     type: String,
   })
   chef: string;
+
+  @Prop({
+    ref: 'Company',
+    type: mongoose.Schema.Types.ObjectId,
+  })
+  company: CompanyDocument;
 
   @Prop({
     type: Boolean,

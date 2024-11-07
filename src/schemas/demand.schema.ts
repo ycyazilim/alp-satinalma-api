@@ -59,6 +59,13 @@ export class Demand {
   })
   demandItems: Array<any>;
 
+  @Prop({
+    type: Array,
+    required: true,
+    default: [],
+  })
+  files: Array<any>;
+
   @Prop({ type: mongoose.Schema.Types.Mixed, default: {} })
   roles: Record<string, any>;
 }

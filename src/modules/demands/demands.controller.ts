@@ -6,13 +6,19 @@ import {
   Post,
   Put,
   Query,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { DemandsService } from './demands.service';
 import { CreateDemandDto } from 'src/dtos/create-demand.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/decorators/current-user';
 import { UpdateDemandDto } from '../../dtos/update-demand.dto';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { AddDemandFile } from '../../dtos/add-demand-file';
+import { extname } from 'path';
 
 @Controller('demands')
 export class DemandsController {
@@ -29,12 +35,36 @@ export class DemandsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('addDemandItemFile')
+  @UseInterceptors(
+    AnyFilesInterceptor({
+      storage: diskStorage({
+        destination: './uploadedFiles/products',
+        filename: (req, file, callback) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const originalName = file.originalname;
+          const extension = extname(originalName);
+          const newFileName = uniqueSuffix + extension;
+          callback(null, newFileName);
+        },
+      }),
+    }),
+  )
+  addDemandItemFile(
+    @Body() addDemandFile: AddDemandFile,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+  ) {
+    console.log(files);
+    return this.demandsService.addFileToDemand(addDemandFile, files);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('update')
   updateDemand(
     @Body() createDemandDto: UpdateDemandDto,
     @CurrentUser() currentUser,
   ) {
-    console.log('currentUser', createDemandDto);
     return this.demandsService.updateDemand(createDemandDto, currentUser._id);
   }
 
@@ -51,6 +81,24 @@ export class DemandsController {
   @Put('reject')
   rejectDemand(@Body('demandId') demandId: string, @CurrentUser() currentUser) {
     return this.demandsService.rejectDemand(demandId, currentUser._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('approveAdmin')
+  approveDemandAdmin(
+    @Body('demandId') demandId: string,
+    @Body('roleId') roleId: string,
+  ) {
+    return this.demandsService.approveDemandAdmin(demandId, roleId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('rejectAdmin')
+  rejectDemandAdmin(
+    @Body('demandId') demandId: string,
+    @Body('roleId') roleId: string,
+  ) {
+    return this.demandsService.rejectDemandAdmin(demandId, roleId);
   }
 
   @UseGuards(JwtAuthGuard)

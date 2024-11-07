@@ -12,4 +12,7 @@ export class UpdateProjectDto {
 
   @IsString()
   id: string;
+
+  @IsString()
+  companyId: string;
 }

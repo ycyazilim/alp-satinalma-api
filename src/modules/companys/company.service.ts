@@ -1,37 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { CreateRoleDto } from 'src/dtos/create-role.dto';
-import { Role, RoleDocument } from 'src/schemas/role.schema';
-import { UpdateRoleDto } from '../../dtos/update-role.dto';
+import { Company, CompanyDocument } from '../../schemas/company.schema';
+import { CreateCompanyDto } from './dto/create-company.dto';
+import { UpdateCompanyDto } from './dto/update-company.dto';
 
 @Injectable()
-export class RolesService {
+export class CompanyService {
   constructor(
-    @InjectModel(Role.name) private readonly roleModel: Model<RoleDocument>,
+    @InjectModel(Company.name) private companyModel: Model<CompanyDocument>,
   ) {}
-
-  async create(createRoleDto: CreateRoleDto) {
-    const role = new this.roleModel({
-      ...createRoleDto,
+  async create(createCompanyDto: CreateCompanyDto) {
+    const project = new this.companyModel({
+      ...createCompanyDto,
     });
-    console.log(role);
-    return await role.save();
+    return await project.save();
   }
 
-  async update(updateRoleDto: UpdateRoleDto) {
-    return this.roleModel.findByIdAndUpdate(
-      updateRoleDto.id,
+  async update(updateCompanyDto: UpdateCompanyDto) {
+    return this.companyModel.findByIdAndUpdate(
+      updateCompanyDto.id,
       {
-        ...updateRoleDto,
+        ...updateCompanyDto,
       },
       { new: true },
     );
   }
   async findAll(page: number) {
-    const count = await this.roleModel.countDocuments({}).exec();
+    const count = await this.companyModel.countDocuments({}).exec();
     const page_total = Math.floor((count - 1) / 20) + 1;
-    const data = await this.roleModel
+    const data = await this.companyModel
       .find({ isDeleted: false })
       .limit(20)
       .skip(page * 20)
@@ -42,14 +40,13 @@ export class RolesService {
     };
   }
   async detail(id: string) {
-    return this.roleModel.findById(id);
+    return this.companyModel.findById(id);
   }
   async filter(name: string, page: number, startDate: string, endDate: string) {
     const query: any = {
-      role: { $regex: name, $options: 'i' },
+      name: { $regex: name, $options: 'i' },
       isDeleted: false,
     };
-
     if (startDate != '') {
       query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
     }
@@ -57,9 +54,9 @@ export class RolesService {
     if (endDate != '') {
       query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
     }
-    const count = await this.roleModel.countDocuments(query).exec();
+    const count = await this.companyModel.countDocuments(query).exec();
     const page_total = Math.floor((count - 1) / 20) + 1;
-    const data = await this.roleModel
+    const data = await this.companyModel
       .find(query)
       .limit(20)
       .skip(page * 20)
@@ -71,7 +68,7 @@ export class RolesService {
   }
 
   remove(id: string) {
-    return this.roleModel.findByIdAndUpdate(
+    return this.companyModel.findByIdAndUpdate(
       id,
       {
         isDeleted: true,

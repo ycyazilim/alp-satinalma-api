@@ -9,8 +9,11 @@ import { DemandsModule } from './modules/demands/demands.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { CompareModule } from './modules/compare/compare.module';
-import { UserProjectsModule } from "./modules/user-projects/user.projects.module";
-import { NotifiactionsModule } from "./modules/notifications/notifiactions.module";
+import { UserProjectsModule } from './modules/user-projects/user.projects.module';
+import { NotifiactionsModule } from './modules/notifications/notifiactions.module';
+import { CompanyModule } from './modules/companys/company.module';
+import { FilesModule } from './modules/files/files.module';
+import { ProductModule } from './modules/products/product.module';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { NotifiactionsModule } from "./modules/notifications/notifiactions.modul
     UsersModule,
     UserProjectsModule,
     NotifiactionsModule,
+    CompanyModule,
+    FilesModule,
+    ProductModule,
   ],
   controllers: [AppController],
   providers: [AppService],

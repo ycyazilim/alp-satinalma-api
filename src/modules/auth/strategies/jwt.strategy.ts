@@ -15,7 +15,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   // eslint-disable-next-line class-methods-use-this
   async validate(payload: any) {
-    console.log('payload', payload);
     return payload;
   }
 }

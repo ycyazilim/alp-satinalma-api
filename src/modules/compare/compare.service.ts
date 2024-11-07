@@ -14,6 +14,7 @@ import {
 } from '../../schemas/user.projects.schema';
 import { EditCompareDto } from '../../dtos/edit-compare.dto';
 import { NotifiactionsService } from '../notifications/notifiactions.service';
+import { ProductService } from '../products/product.service';
 
 @Injectable()
 export class CompareService {
@@ -26,6 +27,7 @@ export class CompareService {
     @InjectModel(UserProject.name)
     private userProjectModel: Model<UserProjectDocument>,
     private notificanctions: NotifiactionsService,
+    private productOffer: ProductService,
   ) {}
 
   async createCompare(
@@ -38,13 +40,10 @@ export class CompareService {
       throw new Error('User not found');
     }
 
-    const roles = await this.roleModel.find({});
     const { demandId, firms, note, selectedCompanyId } = createCompareDto;
-    console.log(demandId);
     const demand = await this.demandModel
       .findById(demandId)
       .populate('project');
-    console.log(demand);
     const compareData = {
       projectId: demand.project._id,
       project: demand.project,
@@ -52,15 +51,15 @@ export class CompareService {
       firms: firms,
       note: note,
       selectedCompanyId: selectedCompanyId,
-      roles: roles.reduce((acc: any, role: any) => {
-        acc[role.role] = {
+      roles: demand.roles.map((e) => {
+        return {
+          ...e,
           status: null,
-          level: role.level || null, // Her role için level ekliyoruz
+          approveName: null,
         };
-        return acc;
-      }, {}),
+      }),
     };
-
+    this.productOffer.addNewOffer(firms);
     const compare = new this.compareModel(compareData);
     await compare.save();
     const usersForProject = await this.userProjectModel
@@ -80,6 +79,7 @@ export class CompareService {
     }
     return compare;
   }
+
   async updateCompare(
     createCompareDto: EditCompareDto,
     documentRequesterId: string,
@@ -90,7 +90,6 @@ export class CompareService {
       throw new Error('User not found');
     }
 
-    const roles = await this.roleModel.find({});
     const { demandId, firms, note, selectedCompanyId } = createCompareDto;
     console.log(demandId);
     const demand = await this.demandModel
@@ -104,13 +103,13 @@ export class CompareService {
       firms: firms,
       note: note,
       selectedCompanyId: selectedCompanyId,
-      roles: roles.reduce((acc: any, role: any) => {
-        acc[role.role] = {
+      roles: demand.roles.map((e) => {
+        return {
+          ...e,
           status: null,
-          level: role.level || null, // Her role için level ekliyoruz
+          approveName: null,
         };
-        return acc;
-      }, {}),
+      }),
     };
 
     const usersForProject = await this.userProjectModel
@@ -128,6 +127,8 @@ export class CompareService {
         3,
       );
     }
+    this.productOffer.addNewOffer(firms);
+
     return this.compareModel.findByIdAndUpdate(
       createCompareDto.id,
       {
@@ -138,13 +139,8 @@ export class CompareService {
   }
 
   async approveCompare(demandId: string, userId: string) {
-    const findUser = await this.userModel.findById(userId).lean();
-    const findDocument = await this.compareModel.findById(demandId).lean();
-    console.log('document', demandId);
-
-    console.log('approve user', findUser);
-    console.log('document', findDocument);
-
+    const findUser = await this.userModel.findById(userId).populate('role');
+    const findDocument = await this.compareModel.findById(demandId);
     const findUserRole: any = findUser.role;
 
     if (!findDocument) {
@@ -158,27 +154,22 @@ export class CompareService {
     if (!findUserRole) {
       throw new Error('User role not found');
     }
-
-    const findUserRoleLevel = findDocument.roles[findUserRole]?.level;
-
-    if (!findUserRoleLevel) {
-      throw new Error('Role level not found for this user');
-    }
-
-    const lowerLevelRole = Object.keys(findDocument.roles).find((role) => {
-      return findDocument.roles[role].level === findUserRoleLevel;
-    });
-
-    const higherLeveLRole = Object.keys(findDocument.roles).find((role) => {
-      return findDocument.roles[role].level === findUserRoleLevel - 1;
-    });
-    console.log(lowerLevelRole);
+    const lowerLevelRole = findDocument.roles.find(
+      (role) =>
+        role.roleModel && role.roleModel._id === findUserRole._id.toString(),
+    );
+    const higherLeveLRole = findDocument.roles.find(
+      (role) =>
+        role.roleModel &&
+        role.level !== null &&
+        role.level < lowerLevelRole.level,
+    );
     if (
       higherLeveLRole &&
       findDocument.roles[higherLeveLRole].status !== true
     ) {
       throw new BadRequestException(
-        `${lowerLevelRole} onaylamadan önce ${higherLeveLRole} onaylaması lazım.`,
+        `${lowerLevelRole.roleModel.role} onaylamadan önce ${higherLeveLRole.roleModel.role} onaylaması lazım.`,
       );
     }
 
@@ -186,7 +177,11 @@ export class CompareService {
       demandId,
       {
         $set: {
-          [`roles.${findUserRole}.status`]: true,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: true,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            findUser.nameSurname,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
         },
       },
       { new: true },
@@ -201,7 +196,7 @@ export class CompareService {
       })
       .populate('user');
     for (const i of usersForProject) {
-      await this.notificanctions.createOneSignalNotificationSpecificUser(
+      this.notificanctions.createOneSignalNotificationSpecificUser(
         i.user._id.toString(),
         `Projenize bir karşılaştırması ${findUserRole} tarafından onaylandı`,
         'Proje karşılaştırması',
@@ -212,13 +207,8 @@ export class CompareService {
   }
 
   async dennyCompare(demandId: string, userId: string) {
-    const findUser = await this.userModel.findById(userId).lean();
-    const findDocument = await this.compareModel.findById(demandId).lean();
-    console.log('document', demandId);
-
-    console.log('approve user', findUser);
-    console.log('document', findDocument);
-
+    const findUser = await this.userModel.findById(userId).populate('role');
+    const findDocument = await this.compareModel.findById(demandId);
     const findUserRole: any = findUser.role;
 
     if (!findDocument) {
@@ -233,23 +223,20 @@ export class CompareService {
       throw new Error('User role not found');
     }
 
-    const findUserRoleLevel = findDocument.roles[findUserRole]?.level;
-
-    if (!findUserRoleLevel) {
-      throw new Error('Role level not found for this user');
-    }
-
-    const lowerLevelRole = Object.keys(findDocument.roles).find((role) => {
-      return findDocument.roles[role].level === findUserRoleLevel;
-    });
-
-    console.log(lowerLevelRole);
+    const lowerLevelRole = findDocument.roles.find(
+      (role) =>
+        role.roleModel && role.roleModel._id === findUserRole._id.toString(),
+    );
 
     const updateDocumentRole = await this.compareModel.findByIdAndUpdate(
       demandId,
       {
         $set: {
-          [`roles.${findUserRole}.status`]: false,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: false,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            findUser.nameSurname,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
         },
       },
       { new: true },
@@ -263,7 +250,7 @@ export class CompareService {
       })
       .populate('user');
     for (const i of usersForProject) {
-      await this.notificanctions.createOneSignalNotificationSpecificUser(
+      this.notificanctions.createOneSignalNotificationSpecificUser(
         i.user._id.toString(),
         `Projenize bir karşılaştırması ${findUserRole} tarafından red edildi`,
         'Proje karşılaştırması',
@@ -274,6 +261,94 @@ export class CompareService {
     console.log('updateDocumentRole', updateDocumentRole);
 
     return updateDocumentRole;
+  }
+
+  async approveCompareAdmin(demandId: string, roleId: string) {
+    const findDocument = await this.compareModel.findById(demandId);
+
+    if (!findDocument) {
+      throw new Error('Document not found');
+    }
+
+    const lowerLevelRole = findDocument.roles.find(
+      (role) => role.roleModel && role.roleModel._id === roleId,
+    );
+
+    const updateDocumentRole = await this.compareModel.findByIdAndUpdate(
+      demandId,
+      {
+        $set: {
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: true,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            'SİSTEM',
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
+        },
+      },
+      { new: true },
+    );
+
+    console.log('updateDocumentRole', updateDocumentRole);
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.projectId,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir talep SİSTEM tarafından onaylandı`,
+        'Proje talebi',
+        2,
+      );
+    }
+    return updateDocumentRole;
+  }
+
+  async rejectCompareAdmin(demandId: string, roleId: string) {
+    const findDocument = await this.compareModel.findById(demandId);
+
+    if (!findDocument) {
+      throw new Error('Document not found');
+    }
+
+    const lowerLevelRole = findDocument.roles.find(
+      (role) => role.roleModel && role.roleModel._id === roleId,
+    );
+
+    const rejectDemandByUser = await this.compareModel.findByIdAndUpdate(
+      demandId,
+      {
+        $set: {
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: false,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            'SİSTEM',
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
+        },
+      },
+      { new: true },
+    );
+
+    console.log('rejectDemandByUser', rejectDemandByUser);
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.projectId,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir talep SİSTEM tarafından red edildi`,
+        'Proje talebi',
+        2,
+      );
+    }
+    return rejectDemandByUser;
   }
 
   async findAll(page: number, currentUserId: string) {
@@ -302,9 +377,17 @@ export class CompareService {
       .populate({
         path: 'demand',
         populate: [
-          { path: 'project', model: 'Project' },
+          {
+            path: 'project',
+            model: 'Project',
+            populate: [{ path: 'company', model: 'Company' }],
+          },
 
-          { path: 'demandRequester', model: 'User' },
+          {
+            path: 'demandRequester',
+            model: 'User',
+            populate: [{ path: 'role', model: 'Role' }],
+          },
         ],
       })
       .sort({
@@ -318,13 +401,22 @@ export class CompareService {
       page_total: page_total,
     };
   }
+
   async detail(id: string) {
     return this.compareModel.findById(id).populate({
       path: 'demand',
       populate: [
-        { path: 'project', model: 'Project' },
+        {
+          path: 'project',
+          model: 'Project',
+          populate: [{ path: 'company', model: 'Company' }],
+        },
 
-        { path: 'demandRequester', model: 'User' },
+        {
+          path: 'demandRequester',
+          model: 'User',
+          populate: [{ path: 'role', model: 'Role' }],
+        },
       ],
     });
   }
@@ -380,8 +472,17 @@ export class CompareService {
       .populate({
         path: 'demand',
         populate: [
-          { path: 'project', model: 'Project' },
-          { path: 'demandRequester', model: 'User' },
+          {
+            path: 'project',
+            model: 'Project',
+            populate: [{ path: 'company', model: 'Company' }],
+          },
+
+          {
+            path: 'demandRequester',
+            model: 'User',
+            populate: [{ path: 'role', model: 'Role' }],
+          },
         ],
       })
       .sort({

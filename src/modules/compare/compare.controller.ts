@@ -24,7 +24,6 @@ export class CompareController {
     @Body() createCompareDto: CreateCompareDto,
     @CurrentUser() currentUser,
   ) {
-    console.log('currentUser', currentUser);
     return this.compareService.createCompare(createCompareDto, currentUser._id);
   }
 
@@ -51,6 +50,23 @@ export class CompareController {
   @Put('denny')
   dennyCompare(@Body('demandId') demandId: string, @CurrentUser() currentUser) {
     return this.compareService.dennyCompare(demandId, currentUser._id);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Put('approveAdmin')
+  approveCompareAdmin(
+    @Body('demandId') demandId: string,
+    @Body('roleId') roleId: string,
+  ) {
+    return this.compareService.approveCompareAdmin(demandId, roleId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('dennyAdmin')
+  dennyCompareAdmin(
+    @Body('demandId') demandId: string,
+    @Body('roleId') roleId: string,
+  ) {
+    return this.compareService.rejectCompareAdmin(demandId, roleId);
   }
 
   @UseGuards(JwtAuthGuard)

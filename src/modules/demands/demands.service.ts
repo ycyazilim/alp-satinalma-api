@@ -13,6 +13,9 @@ import {
 } from '../../schemas/user.projects.schema';
 import { UpdateDemandDto } from '../../dtos/update-demand.dto';
 import { NotifiactionsService } from '../notifications/notifiactions.service';
+import { AddDemandFile } from '../../dtos/add-demand-file';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class DemandsService {
@@ -37,10 +40,8 @@ export class DemandsService {
     if (!findUser) {
       throw new Error('User not found');
     }
+    const { projectId, demandItems, approves } = createDemandDto;
 
-    const roles = await this.roleModel.find({});
-
-    const { projectId, demandItems } = createDemandDto;
     const project = await this.projectModel.findById(projectId);
     const demandData = {
       projectName: project.name,
@@ -49,14 +50,9 @@ export class DemandsService {
       constructorChef: project.chef,
       project: project,
       demandItems,
-      roles: roles.reduce((acc: any, role: any) => {
-        acc[role.role] = {
-          status: null,
-          level: role.level || null, // Her role için level ekliyoruz
-        };
-        return acc;
-      }, {}),
+      roles: approves,
     };
+    console.log(demandData);
 
     const demand = new this.demandModel(demandData);
     await demand.save();
@@ -78,6 +74,37 @@ export class DemandsService {
     return demand;
   }
 
+  async addFileToDemand(
+    addDemandFile: AddDemandFile,
+    files: Array<Express.Multer.File>,
+  ) {
+    const findDemand = await this.demandModel.findById(addDemandFile.demandId);
+
+    if (!findDemand) {
+      throw new Error('Demand not found');
+    }
+    const toAddFiles = [];
+    for (const i of addDemandFile.filesToAdd) {
+      toAddFiles.push({
+        offerItemId: i.offerItemId,
+        path: files.find((e) => e.fieldname === i.id).path,
+        name: i.name,
+        _id: i.id,
+      });
+    }
+    findDemand.files = [...findDemand.files, ...toAddFiles];
+
+    return this.demandModel.findByIdAndUpdate(
+      addDemandFile.demandId,
+      {
+        files: findDemand.files,
+      },
+      {
+        new: true,
+      },
+    );
+  }
+
   async updateDemand(
     createDemandDto: UpdateDemandDto,
     documentRequesterId: string,
@@ -88,10 +115,12 @@ export class DemandsService {
       throw new Error('User not found');
     }
 
-    const roles = await this.roleModel.find({});
+    const { approves, projectId, demandItems, deletedFiles } = createDemandDto;
+    console.log(deletedFiles);
 
-    const { projectId, demandItems } = createDemandDto;
     const project = await this.projectModel.findById(projectId);
+    const oldData = await this.demandModel.findById(createDemandDto.id);
+
     const demandData = {
       projectName: project.name,
       projectCode: project.code,
@@ -99,15 +128,27 @@ export class DemandsService {
       constructorChef: project.chef,
       project: project,
       demandItems,
-      roles: roles.reduce((acc: any, role: any) => {
-        acc[role.role] = {
-          status: null,
-          level: role.level || null, // Her role için level ekliyoruz
-        };
-        return acc;
-      }, {}),
+      roles: approves,
+      files: oldData.files,
     };
-    console.log(demandData);
+    if (deletedFiles) {
+      const deleteFilesList = oldData.files.filter((a) =>
+        deletedFiles.includes(a._id),
+      );
+      console.log(deleteFilesList);
+      for (const i of deleteFilesList) {
+        fs.unlink(path.join(__dirname, `../../../${i.path}`), (err) => {
+          if (err) {
+            console.log(err);
+          }
+        });
+      }
+
+      demandData.files = oldData.files.filter(
+        (a) => !deletedFiles.includes(a._id),
+      );
+      console.log(demandData.files);
+    }
     const response = await this.demandModel.findByIdAndUpdate(
       createDemandDto.id,
       {
@@ -136,11 +177,8 @@ export class DemandsService {
   }
 
   async approveDemand(demandId: string, userId: string) {
-    const findUser = await this.userModel.findById(userId).lean();
-    const findDocument = await this.demandModel.findById(demandId).lean();
-
-    console.log('approve user', findUser);
-    console.log('document', findDocument);
+    const findUser = await this.userModel.findById(userId).populate('role');
+    const findDocument = await this.demandModel.findById(demandId);
 
     const findUserRole: any = findUser.role;
 
@@ -156,26 +194,19 @@ export class DemandsService {
       throw new Error('User role not found');
     }
 
-    const findUserRoleLevel = findDocument.roles[findUserRole]?.level;
-
-    if (!findUserRoleLevel) {
-      throw new Error('Role level not found for this user');
-    }
-
-    const lowerLevelRole = Object.keys(findDocument.roles).find((role) => {
-      return findDocument.roles[role].level === findUserRoleLevel;
-    });
-
-    const higherLeveLRole = Object.keys(findDocument.roles).find((role) => {
-      return findDocument.roles[role].level === findUserRoleLevel - 1;
-    });
-
-    if (
-      higherLeveLRole &&
-      findDocument.roles[higherLeveLRole].status !== true
-    ) {
+    const lowerLevelRole = findDocument.roles.find(
+      (role) =>
+        role.roleModel && role.roleModel._id === findUserRole._id.toString(),
+    );
+    const higherLeveLRole = findDocument.roles.find(
+      (role) =>
+        role.roleModel &&
+        role.level !== null &&
+        role.level < lowerLevelRole.level,
+    );
+    if (higherLeveLRole && higherLeveLRole.status !== true) {
       throw new BadRequestException(
-        `${lowerLevelRole} onaylamadan önce ${higherLeveLRole} onaylaması lazım.`,
+        `${lowerLevelRole.roleModel.role} onaylamadan önce ${higherLeveLRole.roleModel.role} onaylaması lazım.`,
       );
     }
 
@@ -183,13 +214,16 @@ export class DemandsService {
       demandId,
       {
         $set: {
-          [`roles.${findUserRole}.status`]: true,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: true,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            findUser.nameSurname,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
         },
       },
       { new: true },
     );
 
-    console.log('updateDocumentRole', updateDocumentRole);
     const usersForProject = await this.userProjectModel
       .find({
         project: {
@@ -198,7 +232,7 @@ export class DemandsService {
       })
       .populate('user');
     for (const i of usersForProject) {
-      await this.notificanctions.createOneSignalNotificationSpecificUser(
+      this.notificanctions.createOneSignalNotificationSpecificUser(
         i.user._id.toString(),
         `Projenize bir talep ${findUserRole} tarafından onaylandı`,
         'Proje talebi',
@@ -209,13 +243,9 @@ export class DemandsService {
   }
 
   async rejectDemand(demandId: string, userId: string) {
-    const findUser = await this.userModel.findById(userId).lean();
+    const findUser = await this.userModel.findById(userId).populate('role');
 
-    const findDocument = await this.demandModel.findById(demandId).lean();
-
-    console.log('reject user', findUser);
-
-    console.log('document', findDocument);
+    const findDocument = await this.demandModel.findById(demandId);
 
     const findUserRole: any = findUser.role;
 
@@ -231,11 +261,20 @@ export class DemandsService {
       throw new Error('User role not found');
     }
 
+    const lowerLevelRole = findDocument.roles.find(
+      (role) =>
+        role.roleModel && role.roleModel._id === findUserRole._id.toString(),
+    );
+
     const rejectDemandByUser = await this.demandModel.findByIdAndUpdate(
       demandId,
       {
         $set: {
-          [`roles.${findUserRole}.status`]: false,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: false,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            findUser.nameSurname,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
         },
       },
       { new: true },
@@ -250,9 +289,97 @@ export class DemandsService {
       })
       .populate('user');
     for (const i of usersForProject) {
-      await this.notificanctions.createOneSignalNotificationSpecificUser(
+      this.notificanctions.createOneSignalNotificationSpecificUser(
         i.user._id.toString(),
         `Projenize bir talep ${findUserRole} tarafından red edildi`,
+        'Proje talebi',
+        2,
+      );
+    }
+    return rejectDemandByUser;
+  }
+
+  async approveDemandAdmin(demandId: string, roleId: string) {
+    const findDocument = await this.demandModel.findById(demandId);
+
+    if (!findDocument) {
+      throw new Error('Document not found');
+    }
+
+    const lowerLevelRole = findDocument.roles.find(
+      (role) => role.roleModel && role.roleModel._id === roleId,
+    );
+
+    const updateDocumentRole = await this.demandModel.findByIdAndUpdate(
+      demandId,
+      {
+        $set: {
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: true,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            'SİSTEM',
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
+        },
+      },
+      { new: true },
+    );
+
+    console.log('updateDocumentRole', updateDocumentRole);
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.project,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir talep SİSTEM tarafından onaylandı`,
+        'Proje talebi',
+        2,
+      );
+    }
+    return updateDocumentRole;
+  }
+
+  async rejectDemandAdmin(demandId: string, roleId: string) {
+    const findDocument = await this.demandModel.findById(demandId);
+
+    if (!findDocument) {
+      throw new Error('Document not found');
+    }
+
+    const lowerLevelRole = findDocument.roles.find(
+      (role) => role.roleModel && role.roleModel._id === roleId,
+    );
+
+    const rejectDemandByUser = await this.demandModel.findByIdAndUpdate(
+      demandId,
+      {
+        $set: {
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.status`]: false,
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.approveName`]:
+            'SİSTEM',
+          [`roles.${findDocument.roles.indexOf(lowerLevelRole)}.createdAt`]:
+            new Date().toISOString(),
+        },
+      },
+      { new: true },
+    );
+
+    console.log('rejectDemandByUser', rejectDemandByUser);
+    const usersForProject = await this.userProjectModel
+      .find({
+        project: {
+          _id: findDocument.project,
+        },
+      })
+      .populate('user');
+    for (const i of usersForProject) {
+      this.notificanctions.createOneSignalNotificationSpecificUser(
+        i.user._id.toString(),
+        `Projenize bir talep SİSTEM tarafından red edildi`,
         'Proje talebi',
         2,
       );
@@ -315,7 +442,7 @@ export class DemandsService {
       throw new Error('Role already exists in the document');
     }
 
-    const addRoleToDemand = await this.demandModel.findByIdAndUpdate(
+    /* const addRoleToDemand = await this.demandModel.findByIdAndUpdate(
       demandId,
       {
         $set: {
@@ -330,7 +457,7 @@ export class DemandsService {
 
     console.log(addRoleToDemand);
 
-    return addRoleToDemand;
+    return addRoleToDemand;*/
   }
 
   async findAll(page: number, currentUserId: string) {
@@ -351,27 +478,41 @@ export class DemandsService {
       };
     }
     const count = await this.demandModel.countDocuments(query).exec();
-    const page_total = Math.floor((count - 1) / 20) + 1;
+    const page_total = Math.floor((count - 1) / 10) + 1;
     const data = await this.demandModel
       .find(query)
-      .populate('project')
-      .populate('demandRequester')
+      .populate({
+        path: 'project',
+        populate: [{ path: 'company', model: 'Company' }],
+      })
+      .populate('files')
+      .populate({
+        path: 'demandRequester',
+        populate: [{ path: 'role', model: 'Role' }],
+      })
       .sort({
         createdAt: -1,
       })
-      .limit(20)
-      .skip(page * 20)
+      .limit(10)
+      .skip(page * 10)
       .exec();
     return {
       data: data,
       page_total: page_total,
     };
   }
+
   async detail(id: string) {
     return this.demandModel
       .findById(id)
-      .populate('project')
-      .populate('demandRequester');
+      .populate({
+        path: 'project',
+        populate: [{ path: 'company', model: 'Company' }],
+      })
+      .populate({
+        path: 'demandRequester',
+        populate: [{ path: 'role', model: 'Role' }],
+      });
   }
 
   async filter(
@@ -384,7 +525,9 @@ export class DemandsService {
     showArhive: boolean | undefined,
     currentUserId: string,
   ) {
-    const currentUser = await this.userModel.findById(currentUserId);
+    const currentUser = await this.userModel
+      .findById(currentUserId)
+      .populate('role');
     console.log(currentUser);
     const query: any = {
       projectName: { $regex: name, $options: 'i' },
@@ -398,7 +541,12 @@ export class DemandsService {
       query.isDeleted = true;
     }
     if (showWatingApprove != undefined) {
-      query[`roles.${currentUser.role}.status`] = { $ne: true };
+      query.roles = {
+        $elemMatch: {
+          'roleModel._id': currentUser.role._id.toString(),
+          status: null,
+        },
+      };
     }
     if (startDate != '') {
       query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
@@ -418,16 +566,22 @@ export class DemandsService {
     }
     console.log(query);
     const count = await this.demandModel.countDocuments(query).exec();
-    const page_total = Math.floor((count - 1) / 20) + 1;
+    const page_total = Math.floor((count - 1) / 10) + 1;
     const data = await this.demandModel
       .find(query)
-      .populate('project')
-      .populate('demandRequester')
+      .populate({
+        path: 'project',
+        populate: [{ path: 'company', model: 'Company' }],
+      })
+      .populate({
+        path: 'demandRequester',
+        populate: [{ path: 'role', model: 'Role' }],
+      })
       .sort({
         createdAt: -1,
       })
-      .limit(20)
-      .skip(page * 20)
+      .limit(10)
+      .skip(page * 10)
       .exec();
     return {
       data: data,

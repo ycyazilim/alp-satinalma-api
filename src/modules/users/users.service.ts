@@ -20,6 +20,7 @@ export class UsersService {
     const page_total = Math.floor((count - 1) / 20) + 1;
     const data = await this.userModel
       .find({ isDeleted: false })
+      .populate('role')
       .limit(20)
       .skip(page * 20)
       .exec();
@@ -29,7 +30,7 @@ export class UsersService {
     };
   }
   detail(id: string) {
-    return this.userModel.findById(id);
+    return this.userModel.findById(id).populate('role');
   }
   async filter(name: string, page: number, startDate: string, endDate: string) {
     const query: any = {
@@ -47,6 +48,7 @@ export class UsersService {
     const page_total = Math.floor((count - 1) / 20) + 1;
     const data = await this.userModel
       .find(query)
+      .populate('role')
       .limit(20)
       .skip(page * 20)
       .exec();
@@ -103,7 +105,7 @@ export class UsersService {
     userModel.nameSurname = updateUserDto.nameSurname;
     const findRole = await this.roleModel.findById(updateUserDto.role);
 
-    userModel.role = findRole.role;
+    userModel.role = findRole;
     return this.userModel.findByIdAndUpdate(
       updateUserDto.id,
       { ...userModel },
