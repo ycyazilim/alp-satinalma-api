@@ -79,14 +79,8 @@ export class ProductService {
   }
 
   async addNewOffer(firms: any) {
-    console.log(firms);
-    console.log('-----------');
     for (const i of firms) {
-      console.log(i);
-      console.log('-----------');
       for (const l of i.offers) {
-        console.log(l);
-        console.log('-----------');
         const product = l.product;
         const oldProduct = await this.productModel.findOne({
           name: product.name,
@@ -99,16 +93,16 @@ export class ProductService {
             brand: l.brand,
           });
           if (model) {
-            model.unitPrice = l.unitPrice;
-            model.brand = l.brand;
-            model.payment = l.selectedPayment;
+            model.unitPrice = l.unitPrice ?? 0.0;
+            model.brand = l.brand ?? '';
+            model.payment = l.selectedPayment ?? 'tl';
             await model.save();
           } else {
             await this.productOfferModel.create({
-              firmName: i.name,
-              unitPrice: l.unitPrice,
-              brand: l.brand,
-              payment: l.selectedPayment,
+              firmName: i.name ?? '',
+              brand: l.brand ?? '',
+              unitPrice: l.unitPrice ?? 0.0,
+              payment: l.selectedPayment ?? 'tl',
               crateDate: new Date().toISOString(),
               product: oldProduct._id,
             });
@@ -119,10 +113,10 @@ export class ProductService {
           });
           console.log(l);
           await this.productOfferModel.create({
-            firmName: i.name,
-            brand: l.brand,
-            unitPrice: l.unitPrice,
-            payment: l.selectedPayment,
+            firmName: i.name ?? '',
+            brand: l.brand ?? '',
+            unitPrice: l.unitPrice ?? 0.0,
+            payment: l.selectedPayment ?? 'tl',
             crateDate: new Date().toISOString(),
             product: newProduct._id,
           });

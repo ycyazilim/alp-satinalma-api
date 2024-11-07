@@ -77,7 +77,7 @@ export class UsersService {
       nameSurname: createUserDto.nameSurname,
       email: createUserDto.email,
       password: hashedPassword,
-      role: findRole.role,
+      role: findRole,
     });
 
     await newUser.save();
