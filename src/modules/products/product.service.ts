@@ -56,7 +56,6 @@ export class ProductService {
   async filter(name: string, page: number, startDate: string, endDate: string) {
     const query: any = {
       name: { $regex: name, $options: 'i' },
-      isDeleted: false,
     };
     if (startDate != '') {
       query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };

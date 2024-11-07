@@ -93,7 +93,10 @@ export class UserProjectsService {
     const data = await this.userProject
       .find({ isDeleted: false })
       .populate('user')
-      .populate('project')
+      .populate({
+        path: 'project',
+        populate: [{ path: 'company', model: 'Company' }],
+      })
       .limit(20)
       .skip(page * 20)
       .exec();
@@ -122,6 +125,11 @@ export class UserProjectsService {
     const page_total = Math.floor((count - 1) / 20) + 1;
     const data = await this.userProject
       .find(query)
+      .populate('user')
+      .populate({
+        path: 'project',
+        populate: [{ path: 'company', model: 'Company' }],
+      })
       .limit(20)
       .skip(page * 20)
       .exec();
