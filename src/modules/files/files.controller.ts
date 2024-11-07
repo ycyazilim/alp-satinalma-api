@@ -1,9 +1,16 @@
-import { Controller, Get, Param, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Res,
+  StreamableFile,
+  NotFoundException,
+} from '@nestjs/common';
 import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Public } from '../../helpers/make-public';
-import * as mime from 'mime-types';
+import { lookup } from 'mime-types'; // mime-types paketini yükleyin
 
 @Controller('file')
 export class FilesController {
@@ -12,29 +19,28 @@ export class FilesController {
   getImage(
     @Param('folder') folder: string,
     @Param('imageName') imageName: string,
-    @Res() res: Response,
+    @Res({ passthrough: true }) res: Response,
   ) {
+    // Dosya yolunu belirleyin
     const imageFullPath = path.join(
-      __dirname,
-      '../../../uploadedFiles',
+      process.cwd(),
+      'uploadedFiles',
       folder,
       imageName,
     );
 
-    console.log(imageFullPath);
-
-    if (fs.existsSync(imageFullPath)) {
-      // MIME türünü belirlemek için mime paketini kullan
-      const mimeType = mime.lookup(imageFullPath) || 'application/octet-stream';
-
-      // Content-Type başlığını MIME türü ile ayarla
-      res.setHeader('Content-Type', mimeType);
-      // Dosyanın tarayıcıda görüntülenmesi için Content-Disposition başlığını inline olarak ayarla
-      res.setHeader('Content-Disposition', 'inline');
-
-      return res.sendFile(imageFullPath);
-    } else {
-      return res.status(404).send('Dosya bulunamadı');
+    // Dosyanın varlığını kontrol edin
+    if (!fs.existsSync(imageFullPath)) {
+      throw new NotFoundException('Dosya bulunamadı');
     }
+
+    // MIME türünü belirleyin
+    const mimeType = lookup(imageFullPath) || 'application/octet-stream';
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', 'inline');
+
+    // Dosyayı stream olarak döndürün
+    const file = fs.createReadStream(imageFullPath);
+    return new StreamableFile(file);
   }
 }
