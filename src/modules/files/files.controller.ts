@@ -41,6 +41,12 @@ export class FilesController {
 
     // Dosyayı stream olarak döndürün
     const file = fs.createReadStream(imageFullPath);
+    file.on('data', (chunk) => console.log(chunk)); // <--- the data log gets printed
+    file.on('end', () => console.log('done'));
+    file.on('error', (err) => {
+      console.error(err);
+    });
+
     return new StreamableFile(file);
   }
 }
