@@ -28,7 +28,7 @@ export class FilesController {
       folder,
       imageName,
     );
-
+    console.log(imageFullPath);
     // Dosyanın varlığını kontrol edin
     if (!fs.existsSync(imageFullPath)) {
       throw new NotFoundException('Dosya bulunamadı');
