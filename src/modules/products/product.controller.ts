@@ -32,4 +32,20 @@ export class ProductController {
   ) {
     return this.productService.filter(name, +page, startDate, endDate);
   }
+  @UseGuards(JwtAuthGuard)
+  @Get('company')
+  findAllCompany(@Query('page') page: string) {
+    return this.productService.findAllCompany(+page);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('filterCompany')
+  filterCompany(
+    @Query('name') name: string,
+    @Query('page') page: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.productService.filterCompany(name, +page, startDate, endDate);
+  }
 }

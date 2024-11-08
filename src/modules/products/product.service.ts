@@ -28,6 +28,20 @@ export class ProductService {
       page_total: page_total,
     };
   }
+  async findAllCompany(page: number) {
+    const count = await this.productOfferModel.countDocuments({}).exec();
+    const page_total = Math.floor((count - 1) / 20) + 1;
+    const data = await this.productOfferModel
+      .find()
+      .populate('product')
+      .limit(20)
+      .skip(page * 20)
+      .exec();
+    return {
+      data: data,
+      page_total: page_total,
+    };
+  }
   async findAllOffer(page: number, id: string) {
     const findProduct = await this.productModel.findById(id);
     const count = await this.productOfferModel
@@ -68,6 +82,36 @@ export class ProductService {
     const page_total = Math.floor((count - 1) / 20) + 1;
     const data = await this.productModel
       .find(query)
+      .limit(20)
+      .skip(page * 20)
+      .exec();
+    return {
+      data: data,
+      page_total: page_total,
+    };
+  }
+
+  async filterCompany(
+    name: string,
+    page: number,
+    startDate: string,
+    endDate: string,
+  ) {
+    const query: any = {
+      firmName: { $regex: name, $options: 'i' },
+    };
+    if (startDate != '') {
+      query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
+    }
+
+    if (endDate != '') {
+      query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
+    }
+    const count = await this.productOfferModel.countDocuments(query).exec();
+    const page_total = Math.floor((count - 1) / 20) + 1;
+    const data = await this.productOfferModel
+      .find(query)
+      .populate('product')
       .limit(20)
       .skip(page * 20)
       .exec();
